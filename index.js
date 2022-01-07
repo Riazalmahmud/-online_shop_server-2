@@ -68,16 +68,18 @@ async function run() {
       const result = await productManage.insertOne(addCart);
       res.json(result);
     });
-    // get api
+
+    // get api using email
 
     app.get("/shopManage", async (req, res) => {
-      const cursor = productManage.find({});
+      const email = req.query.email;
+      const query = { email: email };
+      const cursor = productManage.find(query);
       const result = await cursor.toArray();
       res.json(result);
     });
 
     // get api
-
     app.get("/products", async (req, res) => {
       const cursor = shopCollection.find({});
       const result = await cursor.toArray();
