@@ -1,39 +1,35 @@
 const express = require("express");
 const app = express();
+const cors = require("cors");
+const admin = require("firebase-admin");
+require("dotenv").config();
 const { MongoClient } = require("mongodb");
 const ObjectId = require("mongodb").ObjectId;
-const admin = require("firebase-admin");
-
 const port = process.env.PORT || 5000;
-const cors = require("cors");
-require("dotenv").config();
-// middleware
-app.use(cors());
-app.use(express.json());
-
 const serviceAccount = require("./shopingJWT.json");
-
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-async function verifyToken(req, res, next) {
-  if (req.headers?.authorization?.startWith("Bearer")) {
-    const token = req.headers.authorization.split(" ")[1];
-
-    try {
-      const decodedUser = await admin.auth().verifyToken(token);
-      res.decodedEmail = decodedUser.email;
-    } catch {}
-  }
-  next();
-}
-
+app.use(cors());
+app.use(express.json());
 const uri = process.env.DB_URI;
+
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
+async function verifyToken(req, res, next) {
+  if (req.headers?.authorization?.startsWith("Bearer ")) {
+    const token = req.headers.authorization.split(" ")[1];
+
+    try {
+      const decodedUser = await admin.auth().verifyIdToken(token);
+      req.decodedEmail = decodedUser.email;
+    } catch {}
+  }
+  next();
+}
 async function run() {
   try {
     await client.connect();
@@ -42,32 +38,6 @@ async function run() {
     const userCollection = database.collection("user");
     const feedbackCollection = database.collection("feedbacks");
     const productManage = database.collection("shopManage");
-
-    app.post("/feedbacks", async (req, res) => {
-      const feedback = req.body;
-      const result = await feedbackCollection.insertOne(feedback);
-      res.json(result);
-    });
-    app.get("/feedbacks", async (req, res) => {
-      const cursor = feedbackCollection.find({});
-      const result = await cursor.toArray();
-      res.json(result);
-    });
-
-    // product manage Information
-    app.post("/products", async (req, res) => {
-      const product = req.body;
-      const result = await shopCollection.insertOne(product);
-      res.json(result);
-    });
-
-    // add to cart page
-    app.post("/shopManage", async (req, res) => {
-      const addCart = req.body;
-      console.log(addCart);
-      const result = await productManage.insertOne(addCart);
-      res.json(result);
-    });
 
     // get api using email
 
@@ -136,6 +106,32 @@ async function run() {
         isAdmin = true;
       }
       res.json({ admin: isAdmin });
+    });
+
+    app.post("/feedbacks", async (req, res) => {
+      const feedback = req.body;
+      const result = await feedbackCollection.insertOne(feedback);
+      res.json(result);
+    });
+    app.get("/feedbacks", async (req, res) => {
+      const cursor = feedbackCollection.find({});
+      const result = await cursor.toArray();
+      res.json(result);
+    });
+
+    // product manage Information
+    app.post("/products", async (req, res) => {
+      const product = req.body;
+      const result = await shopCollection.insertOne(product);
+      res.json(result);
+    });
+
+    // add to cart page
+    app.post("/shopManage", async (req, res) => {
+      const addCart = req.body;
+      console.log(addCart);
+      const result = await productManage.insertOne(addCart);
+      res.json(result);
     });
   } finally {
     // await client.close();
